@@ -1,0 +1,9 @@
+version: '3'
+services:
+  bias-detector:
+    build: .
+    volumes:
+      - ./output:/app/output
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: python test_analyzer.py
