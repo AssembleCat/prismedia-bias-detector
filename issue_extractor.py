@@ -3,10 +3,50 @@ from typing import Dict, List, Tuple
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from konlpy.tag import Okt
-import numpy as np
 from collections import defaultdict
 from models import NewsArticle
 from db_config import get_session
+
+# 카테고리 상수 정의
+CATEGORY_MAPPING = {
+    "정치": {
+        "정치>행정_자치",
+        "정치>북한",
+        "정치>국회_정당",
+        "정치>외교",
+        "정치>정치일반",
+        "정치>선거",
+        "정치>청와대"
+    },
+    "경제": {
+        "경제>자원",
+        "경제>부동산",
+        "경제>금융_제테크",
+        "경제>경제일반",
+        "경제>자동차",
+        "경제>반도체",
+        "경제>산업_기업",
+        "경제>무역",
+        "경제>서비스_쇼핑",
+        "경제>증권_증시",
+        "경제>외환",
+        "경제>취업_창업",
+        "경제>유통",
+        "경제>국제경제"
+    },
+    "사회": {
+        "사회>의료_건강",
+        "사회>환경",
+        "사회>사건_사고",
+        "사회>여성",
+        "사회>장애인",
+        "사회>날씨",
+        "사회>노동_복지",
+        "사회>사회일반",
+        "사회>미디어",
+        "사회>교육_시험"
+    }
+}
 
 class IssueExtractor:
     """뉴스 기사에서 주요 이슈를 추출하는 클래스"""
@@ -32,9 +72,16 @@ class IssueExtractor:
             NewsArticle.title,
             NewsArticle.content
         ).filter(
-            NewsArticle.date.between(start_date, end_date),
-            NewsArticle.category1 == category
+            NewsArticle.date.between(start_date, end_date)
         )
+        
+        # 대분류 카테고리(정치, 경제, 사회)에 대한 처리
+        if category in CATEGORY_MAPPING:
+            subcategories = CATEGORY_MAPPING[category]
+            query = query.filter(NewsArticle.category1.in_(subcategories))
+        else:
+            # 다른 카테고리의 경우 기존 로직 유지
+            query = query.filter(NewsArticle.category1 == category)
         
         return [(article.news_id, article.title, article.content) for article in query.all()]
     
