@@ -1,52 +1,32 @@
-FROM python:3.9-slim
+# Python 3.11 기본 이미지 사용
+FROM python:3.11-slim
 
-# Install system dependencies
+# 환경 변수 설정
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    DEBIAN_FRONTEND=noninteractive
+
+# 시스템 패키지 설치
 RUN apt-get update && \
-    apt-get install -y \
+    apt-get install -y --no-install-recommends \
+    default-jdk \
     g++ \
-    curl \
-    wget \
-    bash \
-    make \
-    automake \
-    autoconf \
-    libtool \
+    libpq-dev \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Install mecab
-RUN wget -O mecab-0.996.tar.gz 'https://drive.google.com/uc?id=0B4y35FiV1wh7cENtOXlicTFaRUE&export=download' \
-    && tar -zxf mecab-0.996.tar.gz \
-    && cd mecab-0.996 \
-    && ./configure \
-    && make \
-    && make install \
-    && ldconfig \
-    && cd .. \
-    && rm -rf mecab-0.996*
-
-# Install mecab-ko-dic
-RUN wget -O mecab-ko-dic-2.1.1-20180720.tar.gz 'https://bitbucket.org/eunjeon/mecab-ko-dic/downloads/mecab-ko-dic-2.1.1-20180720.tar.gz' \
-    && tar -zxf mecab-ko-dic-2.1.1-20180720.tar.gz \
-    && cd mecab-ko-dic-2.1.1-20180720 \
-    && ./configure \
-    && make \
-    && make install \
-    && cd .. \
-    && rm -rf mecab-ko-dic-2.1.1-20180720*
-
-# Set working directory
+# 작업 디렉토리 설정
 WORKDIR /app
 
-# Copy requirements first for better caching
+# 의존성 파일 복사 및 설치
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy source code
+# 소스 코드 복사
 COPY . .
 
-# Create output directory
-RUN mkdir -p output
+# PostgreSQL 연결 환경 변수
+ENV DATABASE_URL="postgresql://newsuser:newspass@db:5432/newsdb"
 
-# Run the application
-CMD ["python", "main.py"]
+# 실행 명령
+ENTRYPOINT ["python", "main.py"]

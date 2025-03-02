@@ -1,4 +1,3 @@
-version: '3'
 services:
   bias-detector:
     build: .
@@ -7,3 +6,16 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
     command: python test_analyzer.py
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: newsdb
+      POSTGRES_USER: newsuser
+      POSTGRES_PASSWORD: newspass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
