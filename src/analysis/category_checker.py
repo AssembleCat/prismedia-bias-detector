@@ -1,4 +1,4 @@
-from db_config import get_session
+from utils.db_config import get_session
 from models import NewsArticle
 
 def check_categories():

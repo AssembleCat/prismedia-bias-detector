@@ -3,8 +3,8 @@ import glob
 import pandas as pd
 import numpy as np
 from datetime import datetime
-from models import NewsArticle
-from db_config import get_session, ensure_table_exists
+from src.models import NewsArticle
+from src.utils.db_config import get_session, ensure_table_exists
 
 class CSVProcessor:
     """CSV 파일 처리 클래스"""

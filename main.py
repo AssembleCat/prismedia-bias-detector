@@ -1,6 +1,6 @@
 import argparse
-from csv_processor import CSVProcessor
-from issue_extractor import extract_main_issues
+from src.data_processing.csv_processor import CSVProcessor
+from src.analysis.issue_extractor import extract_main_issues
 
 def main():
     # 명령행 인자 파싱

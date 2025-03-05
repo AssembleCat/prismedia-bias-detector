@@ -4,43 +4,48 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from konlpy.tag import Okt
 from collections import defaultdict
-from models import NewsArticle
-from db_config import get_session
+from src.models import NewsArticle
+from src.utils.db_config import get_session
 
 # 카테고리 상수 정의
 CATEGORY_MAPPING = {
-    "정치": {
-        "정치",
-        "행정",
-        "국회",
-        "대통령",
-        "국방",
-        "외교",
-        "북한",
-        "선거"
-    },
-    "경제": {
-        "경제",
-        "금융",
-        "증권",
-        "산업",
-        "중소벤처",
-        "에너지",
-        "무역",
-        "부동산",
-        "자동차",
-        "유통"
-    },
-    "사회": {
-        "사회",
-        "교육",
-        "복지",
-        "환경",
-        "교통",
-        "문화",
-        "연예",
-        "스포츠"
-    }
+    "정치": [
+        "정치>정치일반",
+        "정치>선거",
+        "정치>청와대",
+        "정치>북한",
+        "정치>국회_정당",
+        "정치>외교",
+        "정치>행정_자치"
+    ],
+    "경제": [
+        "경제>무역",
+        "경제>유통",
+        "경제>국제경제",
+        "경제>반도체",
+        "경제>취업_창업",
+        "경제>증권_증시",
+        "경제>자동차",
+        "경제>경제일반",
+        "경제>금융_재테크",
+        "경제>서비스_쇼핑",
+        "경제>산업_기업",
+        "경제>부동산",
+        "경제>자원",
+        "경제>외환"
+    ],
+    "사회": [
+        "사회>사건_사고",
+        "사회>여성",
+        "사회>미디어",
+        "사회>교육_시험",
+        "사회>노동_복지",
+        "사회>날씨",
+        "사회>환경",
+        "사회>사회일반",
+        "사회>의료_건강",
+        "사회>장애인"
+    ]
 }
 
 class IssueExtractor:
@@ -76,10 +81,12 @@ class IssueExtractor:
             query = query.filter(NewsArticle.category1.in_(subcategories))
         else:
             # 다른 카테고리의 경우 기존 로직 유지
-            query = query.filter(NewsArticle.category1 == category)
+            query = query.filter(NewsArticle.category1.startswith(category))
         
-        return [(article.news_id, article.title, article.content) for article in query.all()]
-    
+        articles = query.all()
+        print(f"\n검색된 기사 수: {len(articles)}개")
+        return [(article.news_id, article.title, article.content) for article in articles]
+
     def extract_issues(self, 
                       start_date: datetime.date,
                       end_date: datetime.date,
@@ -99,21 +106,27 @@ class IssueExtractor:
             {이슈 키워드: [관련 뉴스 ID 리스트]} 형태의 딕셔너리
         """
         try:
+            print(f"\n[1/5] 기사 필터링 중...")
             # 기사 필터링
             articles = self._filter_articles(start_date, end_date, category)
             if not articles:
+                print("해당 기간에 기사가 없습니다.")
                 return {}
                 
+            print(f"\n[2/5] 기사 텍스트 처리 중...")
             # 기사 ID와 텍스트 분리
             news_ids, titles, contents = zip(*articles)
             
+            print(f"\n[3/5] TF-IDF 계산 중...")
             # 제목과 본문을 결합하여 TF-IDF 계산
             texts = [f"{title} {content}" for title, content in zip(titles, contents)]
             tfidf_matrix = self.vectorizer.fit_transform(texts)
             
+            print(f"\n[4/5] 문서 간 유사도 계산 중...")
             # 문서 간 유사도 계산
             similarities = cosine_similarity(tfidf_matrix)
             
+            print(f"\n[5/5] 이슈 그룹화 중...")
             # 각 문서별로 유사한 문서 그룹화
             document_groups = defaultdict(set)
             for i in range(len(similarities)):
@@ -151,8 +164,15 @@ class IssueExtractor:
                 # 그룹 내 뉴스 ID 수집
                 group_news_ids = [news_ids[i] for i in group_docs]
                 
+                # 그룹의 대표 기사 제목 (첫 번째 기사)
+                representative_title = titles[main_doc]
+                
                 # 결과 저장
-                issues[issue_keyword] = group_news_ids
+                issues[issue_keyword] = {
+                    'news_ids': group_news_ids,
+                    'title': representative_title,
+                    'article_count': len(group_news_ids)
+                }
                 
                 # 처리된 문서 표시
                 processed_docs.update(group_docs)
@@ -195,9 +215,8 @@ def extract_main_issues(start_date: str,
     print(f"카테고리: {category}")
     print(f"추출된 이슈 수: {len(issues)}")
     
-    for keyword, news_ids in issues.items():
+    for keyword, issue_data in issues.items():
         print(f"\n[이슈 키워드] {keyword}")
-        print(f"관련 기사 수: {len(news_ids)}")
-        print(f"관련 기사 ID: {', '.join(news_ids[:5])}...")
-    
-    return issues
+        print(f"대표 기사 제목: {issue_data['title']}")
+        print(f"관련 기사 수: {issue_data['article_count']}")
+        print(f"관련 기사 ID: {', '.join(issue_data['news_ids'][:5])}...")
