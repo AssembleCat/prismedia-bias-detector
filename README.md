@@ -1,4 +1,4 @@
-# prismedia-bias-detector(프리즈미디어 뉴스 이슈 분석기)
+# prismedia-keyword-grouping(프리즈미디어 뉴스 이슈 분석기)
 
 뉴스 기사 데이터를 분석하여 주요 이슈를 추출하고 분석하는 도구입니다.
 
